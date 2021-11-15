@@ -13,10 +13,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import javax.transaction.Transactional;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
+import java.util.regex.Pattern;
 
 @Service
 @Transactional
@@ -30,6 +28,19 @@ public class ClientServiceImpl implements ClientService, UserDetailsService {
 
     @Override
     public Client saveClient(Client client) {
+        Optional<Client> clientByEmail = clientRepository.findByEmail(client.getEmail());
+        if(clientByEmail.isPresent()){
+            throw new IllegalStateException("Email was already taken!");
+        }
+        String email = client.getEmail();
+        if(email.length() > 100){
+            throw new IllegalArgumentException("Email cannot be longer than 100 characters!");
+        }
+        String regexPattern = "^(?=.{1,64}@)[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*@"
+                + "[^-][A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*(\\.[A-Za-z]{2,})$";
+        if(!email.matches(regexPattern)){
+            throw new IllegalArgumentException("Not a valid email address was given!");
+        }
         client.setPassword(passwordEncoder.encode(client.getPassword()));
         clientRepository.save(client);
         addRoleToClient(client.getEmail(),"ROLE_USER");
@@ -43,14 +54,16 @@ public class ClientServiceImpl implements ClientService, UserDetailsService {
 
     @Override
     public void addRoleToClient(String email, String rolename) {
-        Client client = clientRepository.findByEmail(email);
+        Optional<Client> client = clientRepository.findByEmail(email);
         Role role = roleRepository.findByName(rolename);
-        client.getRoles().add(role);
+        client.get().getRoles().add(role);
     }
 
     @Override
     public Client getClient(String email) {
-        return clientRepository.findByEmail(email);
+        return clientRepository.findByEmail(email).orElseThrow(() -> {
+            throw new IllegalStateException("No client found with given email.");
+        });
     }
 
     @Override
@@ -60,14 +73,15 @@ public class ClientServiceImpl implements ClientService, UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        Client client = clientRepository.findByEmail(email);
-        if(client == null){
+        Optional<Client> client = clientRepository.findByEmail(email);
+        if(!client.isPresent()){
             throw new UsernameNotFoundException("User could not be found in the database!");
         }
         List<SimpleGrantedAuthority> authorities = new ArrayList<SimpleGrantedAuthority>();
-        for (Role role : client.getRoles()) {
+        Client actualClient = client.get();
+        for (Role role : actualClient.getRoles()) {
             authorities.add(new SimpleGrantedAuthority(role.getName()));
         }
-        return new org.springframework.security.core.userdetails.User(client.getEmail(), client.getPassword(), authorities);
+        return new org.springframework.security.core.userdetails.User(actualClient.getEmail(), actualClient.getPassword(), authorities);
     }
 }

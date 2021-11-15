@@ -1,21 +1,17 @@
 package interview.jobsource.controllers;
 
-import interview.jobsource.PositionNotFoundException;
-import interview.jobsource.dto.ClientRoleRequest;
+import interview.jobsource.security.PositionNotFoundException;
 import interview.jobsource.dto.SearchRequest;
-import interview.jobsource.models.Client;
 import interview.jobsource.models.Position;
-import interview.jobsource.models.Role;
-import interview.jobsource.services.ClientService;
 import interview.jobsource.services.PositionService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("")
@@ -29,9 +25,15 @@ public class PositionController {
     }
 
     @PostMapping("/positions")
-    public ResponseEntity<Position> saveClient(@RequestBody Position position){
+    public ResponseEntity<?> savePosition(@RequestBody Position position){
         URI uri = URI.create(ServletUriComponentsBuilder.fromCurrentContextPath().path("/position/{positionId}").toUriString());
-        return ResponseEntity.created(uri).body(positionService.savePosition(position));
+        try{
+            positionService.savePosition(position);
+        }
+        catch (IllegalArgumentException e){
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        }
+        return ResponseEntity.created(uri).body(position);
     }
 
     @GetMapping("/positions/{positionId}")
@@ -40,7 +42,15 @@ public class PositionController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<Position>> getPosition(@RequestBody SearchRequest searchRequest){
-        return ResponseEntity.ok().body(positionService.getMatches(searchRequest.getName(),searchRequest.getLocation()));
+    public ResponseEntity<?> getPosition(@RequestBody SearchRequest searchRequest){
+        List<Position> positions;
+        try{
+            positions = positionService.getMatches(searchRequest.getName(),searchRequest.getLocation());
+        } catch (IllegalArgumentException e){
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (PositionNotFoundException e){
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        }
+        return ResponseEntity.ok().body(positions);
     }
 }

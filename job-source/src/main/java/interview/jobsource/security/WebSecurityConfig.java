@@ -40,6 +40,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
         http.authorizeRequests().antMatchers(HttpMethod.GET, "/clients").authenticated();
         http.authorizeRequests().antMatchers(HttpMethod.POST, "/positions").authenticated();
         http.authorizeRequests().antMatchers(HttpMethod.POST, "/clients").permitAll();
+        http.authorizeRequests().antMatchers(HttpMethod.GET,"/search").authenticated();
         http.authorizeRequests().anyRequest().permitAll();
         http.addFilter(authenticationFilter);
         http.addFilterBefore(new AuthorizationFilter(jwtSecret), UsernamePasswordAuthenticationFilter.class);

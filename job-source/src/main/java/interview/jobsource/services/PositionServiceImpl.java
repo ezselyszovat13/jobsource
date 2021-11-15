@@ -1,6 +1,6 @@
 package interview.jobsource.services;
 
-import interview.jobsource.PositionNotFoundException;
+import interview.jobsource.security.PositionNotFoundException;
 import interview.jobsource.models.Position;
 import interview.jobsource.repositories.PositionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +17,12 @@ public class PositionServiceImpl implements PositionService {
 
     @Override
     public Position savePosition(Position position) {
+        if(position.getName().length() > 50){
+            throw new IllegalArgumentException("Name of the position cannot be longer than 50 characters!");
+        }
+        if(position.getLocation().length() > 50){
+            throw new IllegalArgumentException("Name of the location cannot be longer than 50 characters!");
+        }
         return positionRepository.save(position);
     }
 
@@ -32,7 +38,16 @@ public class PositionServiceImpl implements PositionService {
 
     @Override
     public List<Position> getMatches(String keyword, String location) {
-        return positionRepository.findMatchingPositions(keyword, location).orElseThrow( () ->
-                new PositionNotFoundException("No position found with a given criteria!"));
+        if(keyword.length() > 50){
+            throw new IllegalArgumentException("Name of the position cannot be longer than 50 characters!");
+        }
+        if(location.length() > 50){
+            throw new IllegalArgumentException("Name of the location cannot be longer than 50 characters!");
+        }
+        Optional<List<Position>> positions = positionRepository.findMatchingPositions(keyword, location);
+        if(positions.isEmpty()){
+            throw new PositionNotFoundException("No position found with the given criteria!");
+        }
+        return positions.get();
     }
 }
